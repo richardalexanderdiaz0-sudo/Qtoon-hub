@@ -210,41 +210,49 @@ const createCard = (item) => {
   return card;
 };
 
-const renderHome = async () => {
-  mainContent.innerHTML = '<div class="flex justify-center py-20"><div class="loader w-10 h-10 border-4 border-slate-100 rounded-full"></div></div>';
-  
+const renderSection = async (title, fetchFn) => {
+  const safeId = title.replace(/[^a-z0-9]/gi, '');
+  const sectionEl = document.createElement('div');
+  sectionEl.className = 'space-y-4';
+  sectionEl.innerHTML = `
+    <div class="flex justify-between items-center">
+      <h3 class="text-xl font-bold text-slate-900">${title}</h3>
+      <button class="text-[#ff4757] text-xs font-bold uppercase tracking-wider">Ver todo</button>
+    </div>
+    <div class="flex gap-4 overflow-x-auto hide-scrollbar pb-4 min-h-[200px] items-center justify-center" id="section-container-${safeId}">
+      <div class="loader w-8 h-8 border-4 border-slate-100 rounded-full"></div>
+    </div>
+  `;
+  mainContent.appendChild(sectionEl);
+  const container = sectionEl.querySelector(`#section-container-${safeId}`);
+
   try {
-    const [books, podcasts, manga] = await Promise.all([
-      APIs.books.trending(),
-      APIs.podcasts.trending(),
-      APIs.manga.trending()
-    ]);
-
-    mainContent.innerHTML = '';
-    
-    const sections = [
-      { title: 'Libros Tendencia', data: books },
-      { title: 'Podcasts Populares', data: podcasts },
-      { title: 'Manga & Comics', data: manga }
-    ];
-
-    sections.forEach(sec => {
-      const sectionEl = document.createElement('div');
-      sectionEl.className = 'space-y-4';
-      sectionEl.innerHTML = `
-        <div class="flex justify-between items-center">
-          <h3 class="text-xl font-bold text-slate-900">${sec.title}</h3>
-          <button class="text-[#ff4757] text-xs font-bold uppercase tracking-wider">Ver todo</button>
-        </div>
-        <div class="flex gap-4 overflow-x-auto hide-scrollbar pb-4"></div>
-      `;
-      const container = sectionEl.querySelector('div:last-child');
-      sec.data.forEach(item => container.appendChild(createCard(item)));
-      mainContent.appendChild(sectionEl);
-    });
+    const data = await fetchFn();
+    container.innerHTML = '';
+    container.classList.remove('justify-center');
+    if (data.length === 0) {
+      container.innerHTML = '<p class="text-slate-400 text-sm">No hay contenido disponible.</p>';
+    } else {
+      data.forEach(item => container.appendChild(createCard(item)));
+    }
   } catch (err) {
-    mainContent.innerHTML = `<p class="text-center text-red-500 py-10">Error cargando contenido: ${err.message}</p>`;
+    console.error(`Error en ${title}:`, err);
+    container.innerHTML = `
+      <div class="text-center space-y-2">
+        <p class="text-xs text-red-400">Error de conexión</p>
+        <button class="text-[10px] font-bold uppercase text-[#ff4757] border border-[#ff4757]/20 px-3 py-1 rounded-full" onclick="this.parentElement.innerHTML='<div class=\'loader w-5 h-5 border-2 border-slate-100 rounded-full\'></div>'; renderHome();">Reintentar</button>
+      </div>
+    `;
   }
+};
+
+const renderHome = async () => {
+  mainContent.innerHTML = '';
+  
+  // Cargamos las secciones en paralelo pero se renderizan de forma independiente
+  renderSection('Libros Tendencia', APIs.books.trending);
+  renderSection('Podcasts Populares', APIs.podcasts.trending);
+  renderSection('Manga & Comics', APIs.manga.trending);
 };
 
 const renderSearch = () => {
