@@ -1,0 +1,5 @@
+{
+  "name": "QToon Content Hub",
+  "description": "Agregador de Libros, Manga y Podcasts con estilo QToon Modern y Firebase Auth.",
+  "requestFramePermissions": []
+}
