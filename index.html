@@ -9,6 +9,8 @@
     <!-- PWA Manifest -->
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#ff4757">
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts -->
@@ -135,14 +137,45 @@
             <p id="view-subtitle" class="text-sm text-slate-400">Explora tendencias</p>
           </div>
         </div>
-        <div id="user-avatar" class="w-10 h-10 bg-[#f1f2f6] rounded-full overflow-hidden border-2 border-white shadow-sm">
-          <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="Avatar" id="header-avatar-img">
+        <div class="flex items-center gap-4">
+          <!-- Admin Studio Icon (Hidden by default) -->
+          <button id="admin-studio-icon" class="hidden w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-600 hover:bg-red-50 hover:text-[#ff4757] transition-all">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          </button>
+          <div id="user-avatar" class="w-10 h-10 bg-[#f1f2f6] rounded-full overflow-hidden border-2 border-white shadow-sm">
+            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="Avatar" id="header-avatar-img">
+          </div>
         </div>
       </header>
 
       <main id="main-content" class="px-6 space-y-8">
         <!-- Views will be injected here -->
       </main>
+
+      <!-- Immersive Reader UI -->
+      <div id="reader-ui" class="fixed inset-0 z-[100] bg-black hidden flex flex-col overflow-hidden">
+        <div id="reader-controls" class="absolute inset-x-0 top-0 p-6 bg-gradient-to-b from-black/80 to-transparent flex justify-between items-center transition-opacity duration-300 z-10">
+          <button id="reader-back" class="w-10 h-10 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          </button>
+          <div class="flex gap-4">
+            <button id="reader-notify" class="w-10 h-10 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+            </button>
+            <button id="reader-share" class="w-10 h-10 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/></svg>
+            </button>
+          </div>
+        </div>
+        <div id="reader-pages" class="flex-1 overflow-y-auto flex flex-col items-center bg-black hide-scrollbar">
+          <!-- Pages injected here -->
+        </div>
+        <div id="reader-bottom-controls" class="absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-black/80 to-transparent flex justify-between items-center transition-opacity duration-300 z-10">
+          <button id="prev-chapter" class="px-6 py-3 bg-white/10 backdrop-blur-md rounded-2xl text-white font-bold text-sm">Anterior</button>
+          <div class="text-white font-bold text-sm" id="reader-chapter-info">Capítulo 1</div>
+          <button id="next-chapter" class="px-6 py-3 bg-white/10 backdrop-blur-md rounded-2xl text-white font-bold text-sm">Siguiente</button>
+        </div>
+      </div>
 
       <!-- Bottom Navigation -->
       <nav class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-slate-100 px-8 py-4 flex justify-between items-center z-40">
@@ -199,14 +232,21 @@
         measurementId: "G-TQ7GDCG5QX"
       };
 
+      // 1.1 CONFIGURACIÓN DE SUPABASE (RELLENA ESTO)
+      const SUPABASE_URL = "TU_SUPABASE_URL";
+      const SUPABASE_KEY = "TU_SUPABASE_ANON_KEY";
+      const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
       const googleProvider = new GoogleAuthProvider();
 
+      const ADMIN_EMAIL = "richardalexanderdiaz0@gmail.com";
+
       // 2. ESTADO GLOBAL
       let currentUser = null;
       let currentView = 'home';
-      let library = JSON.parse(localStorage.getItem('qtoon_library') || '[]');
+      let library = [];
       let deferredPrompt;
 
       // 3. ELEMENTOS DEL DOM
@@ -219,337 +259,510 @@
       const modalOverlay = document.getElementById('modal-overlay');
       const modalContent = document.getElementById('modal-content');
       const headerAvatarImg = document.getElementById('header-avatar-img');
-      const termsCheckbox = document.getElementById('terms-checkbox');
-      const termsModal = document.getElementById('terms-modal');
-      const termsOverlay = document.getElementById('terms-modal-overlay');
-      const authError = document.getElementById('auth-error');
+      const adminStudioIcon = document.getElementById('admin-studio-icon');
+      const readerUI = document.getElementById('reader-ui');
+      const readerControls = document.getElementById('reader-controls');
+      const readerPages = document.getElementById('reader-pages');
 
       // 4. UTILIDADES
-      const robustFetch = async (url) => {
-        try {
-          const res = await fetch(url);
-          if (!res.ok) throw new Error(`HTTP ${res.status} para ${url}`);
-          return await res.json();
-        } catch (directErr) {
-          console.warn(`Petición directa fallida para ${url}, intentando vía proxy...`);
-          try {
-            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-            const res = await fetch(proxyUrl);
-            if (!res.ok) throw new Error(`HTTP ${res.status} del proxy`);
-            const data = await res.json();
-            if (data.contents) {
-              try { return JSON.parse(data.contents); } catch (e) { throw new Error('Error parseo JSON proxy'); }
-            }
-            throw new Error('Respuesta inesperada proxy');
-          } catch (proxyErr) {
-            throw new Error(`Fallo total: ${proxyErr.message}`);
-          }
+      const isAdmin = () => currentUser && currentUser.email === ADMIN_EMAIL;
+      const mainHeader = document.querySelector('header');
+
+      const closeModal = () => {
+        modalOverlay.classList.remove('opacity-100');
+        detailModal.classList.remove('open');
+        setTimeout(() => modalOverlay.classList.add('hidden'), 300);
+      };
+
+      modalOverlay.onclick = closeModal;
+
+      const updateLibrary = async () => {
+        if (!currentUser || !supabase) return;
+        const { data } = await supabase.from('user_library').select('*, works(*)').eq('user_id', currentUser.uid);
+        library = data || [];
+      };
+
+      const addToLibrary = async (workId) => {
+        if (!currentUser || !supabase) return;
+        await supabase.from('user_library').upsert({ user_id: currentUser.uid, work_id: workId });
+        updateLibrary();
+      };
+
+      // 5. RENDERIZADO HOME
+      const renderHome = async () => {
+        if (!supabase) {
+          mainContent.innerHTML = '<p class="text-center text-slate-400 py-20">Configura Supabase para ver el contenido.</p>';
+          return;
         }
-      };
+        
+        mainContent.innerHTML = '<div class="loader-container flex justify-center py-20"><div class="loader w-10 h-10 border-4 border-[#ff4757] border-t-transparent rounded-full animate-spin"></div></div>';
 
-      const saveToLibrary = (item) => {
-        if (!library.find(i => i.id === item.id)) {
-          library.push(item);
-          localStorage.setItem('qtoon_library', JSON.stringify(library));
-          alert('¡Guardado en tu biblioteca!');
-        } else {
-          alert('Ya está en tu biblioteca');
+        const { data: works } = await supabase.from('works').select('*').order('created_at', { ascending: false });
+        
+        if (!works || works.length === 0) {
+          mainContent.innerHTML = '<p class="text-center text-slate-400 py-20">Aún no hay nada por ver...</p>';
+          return;
         }
+
+        mainContent.innerHTML = '';
+
+        // Secciones
+        renderSection('AÑADIDOS RECIENTEMENTE', works.slice(0, 5));
+        renderSection('PRÓXIMAMENTE', works.filter(w => new Date(w.release_date) > new Date()));
+        renderSection('ACTUALIZACIONES DIARIAS', works.slice(0, 5));
+        renderSection('TÍTULOS EN TENDENCIA', works.sort((a,b) => b.views_count - a.views_count).slice(0, 5));
+        renderSection('CÓMICS Y MANHWAS', works, true);
+        renderSection('TERMINADOS', works.filter(w => w.status === 'Finalizado'));
       };
 
-      const removeFromLibrary = (id) => {
-        library = library.filter(i => i.id !== id);
-        localStorage.setItem('qtoon_library', JSON.stringify(library));
-        if (currentView === 'library') renderLibrary();
-      };
-
-      const debounce = (func, wait) => {
-        let timeout;
-        return (...args) => {
-          clearTimeout(timeout);
-          timeout = setTimeout(() => func.apply(this, args), wait);
-        };
-      };
-
-      // 5. APIS
-      const APIs = {
-        books: {
-          trending: async () => {
-            const data = await robustFetch('https://openlibrary.org/trending/daily.json?limit=10');
-            return data.works.map(w => ({
-              id: w.key,
-              title: w.title,
-              author: w.author_name?.[0] || 'Desconocido',
-              image: w.cover_i ? `https://covers.openlibrary.org/b/id/${w.cover_i}-M.jpg` : 'https://via.placeholder.com/150x200?text=No+Cover',
-              type: 'Libro',
-              desc: 'Un libro fascinante disponible en OpenLibrary.'
-            }));
-          },
-          search: async (q) => {
-            const data = await robustFetch(`https://openlibrary.org/search.json?q=${q}&limit=5`);
-            return data.docs.map(w => ({
-              id: w.key,
-              title: w.title,
-              author: w.author_name?.[0] || 'Desconocido',
-              image: w.cover_i ? `https://covers.openlibrary.org/b/id/${w.cover_i}-M.jpg` : 'https://via.placeholder.com/150x200?text=No+Cover',
-              type: 'Libro',
-              desc: w.first_sentence?.[0] || 'Sin descripción disponible.'
-            }));
-          }
-        },
-        podcasts: {
-          trending: async () => {
-            const data = await robustFetch('https://itunes.apple.com/search?term=podcast&limit=10&media=podcast');
-            return data.results.map(p => ({
-              id: p.collectionId.toString(),
-              title: p.collectionName,
-              author: p.artistName,
-              image: p.artworkUrl600 || p.artworkUrl100,
-              type: 'Podcast',
-              desc: `Podcast de ${p.primaryGenreName}.`
-            }));
-          },
-          search: async (q) => {
-            const data = await robustFetch(`https://itunes.apple.com/search?term=${q}&limit=5&media=podcast`);
-            return data.results.map(p => ({
-              id: p.collectionId.toString(),
-              title: p.collectionName,
-              author: p.artistName,
-              image: p.artworkUrl600 || p.artworkUrl100,
-              type: 'Podcast',
-              desc: `Podcast de ${p.primaryGenreName}.`
-            }));
-          }
-        },
-        manga: {
-          trending: async () => {
-            const data = await robustFetch('https://api.mangadex.org/manga?limit=10&includes[]=cover_art&order[followedCount]=desc');
-            return data.data.map(m => {
-              const cover = m.relationships.find(r => r.type === 'cover_art');
-              return {
-                id: m.id,
-                title: m.attributes.title.en || Object.values(m.attributes.title)[0],
-                author: 'MangaDex',
-                image: cover ? `https://uploads.mangadex.org/covers/${m.id}/${cover.attributes.fileName}.256.jpg` : 'https://via.placeholder.com/150x200?text=No+Cover',
-                type: 'Manga',
-                desc: m.attributes.description.en || 'Sin descripción.'
-              };
-            });
-          },
-          search: async (q) => {
-            const data = await robustFetch(`https://api.mangadex.org/manga?title=${q}&limit=5&includes[]=cover_art`);
-            return data.data.map(m => {
-              const cover = m.relationships.find(r => r.type === 'cover_art');
-              return {
-                id: m.id,
-                title: m.attributes.title.en || Object.values(m.attributes.title)[0],
-                author: 'MangaDex',
-                image: cover ? `https://uploads.mangadex.org/covers/${m.id}/${cover.attributes.fileName}.256.jpg` : 'https://via.placeholder.com/150x200?text=No+Cover',
-                type: 'Manga',
-                desc: m.attributes.description.en || 'Sin descripción.'
-              };
-            });
-          }
-        }
-      };
-
-      // 6. RENDERIZADO
-      const openModal = (item) => {
-        modalContent.innerHTML = `
-          <div class="flex flex-col items-center text-center space-y-4">
-            <img src="${item.image}" class="w-48 h-64 object-cover rounded-[28px] shadow-xl" alt="${item.title}">
-            <div>
-              <span class="px-3 py-1 bg-[#ff4757]/10 text-[#ff4757] text-xs font-bold rounded-full uppercase tracking-widest">${item.type}</span>
-              <h3 class="text-2xl font-bold text-slate-900 mt-2">${item.title}</h3>
-              <p class="text-slate-400 font-medium">${item.author}</p>
-            </div>
-            <p class="text-slate-600 leading-relaxed text-sm">${item.desc}</p>
-            <button id="modal-save-btn" class="qtoon-btn w-full py-4 bg-[#ff4757] text-white font-bold shadow-lg shadow-red-200">
-              ${library.find(i => i.id === item.id) ? 'En tu Biblioteca' : 'Guardar en mi Biblioteca'}
-            </button>
+      const renderSection = (title, items, isGrid = false) => {
+        if (items.length === 0 && title !== 'CÓMICS Y MANHWAS') return;
+        
+        const section = document.createElement('div');
+        section.className = 'space-y-4';
+        section.innerHTML = `
+          <div class="flex justify-between items-center">
+            <h3 class="text-lg font-extrabold text-slate-900 tracking-tight cursor-pointer hover:text-[#ff4757] transition-colors" onclick="handleSectionClick('${title}')">${title}</h3>
+            <button class="text-[#ff4757] text-xs font-bold uppercase tracking-widest">Ver todo</button>
+          </div>
+          <div class="${isGrid ? 'grid grid-cols-2 gap-6' : 'flex gap-4 overflow-x-auto hide-scrollbar pb-4'}">
+            ${items.length > 0 ? items.map(item => createWorkCard(item, isGrid)).join('') : '<p class="text-slate-400 text-sm">No hay títulos disponibles.</p>'}
           </div>
         `;
-        document.getElementById('modal-save-btn').onclick = () => {
-          saveToLibrary(item);
-          openModal(item);
+        mainContent.appendChild(section);
+      };
+
+      const createWorkCard = (work, isGrid) => {
+        const badge = work.status === 'Finalizado' ? 'FINALIZADO' : (new Date(work.created_at) > new Date(Date.now() - 86400000 * 7) ? 'NUEVO' : '');
+        return `
+          <div class="qtoon-card flex-shrink-0 ${isGrid ? 'w-full' : 'w-40'} space-y-2 cursor-pointer" onclick="openWorkDetail('${work.id}')">
+            <div class="relative aspect-[3/4] rounded-[28px] overflow-hidden bg-slate-100 shadow-sm">
+              <img src="${work.cover_url}" class="w-full h-full object-cover" loading="lazy">
+              ${badge ? `<div class="absolute top-2 left-2 px-2 py-1 bg-white/90 backdrop-blur-md rounded-full text-[8px] font-bold uppercase text-[#ff4757]">${badge}</div>` : ''}
+              ${work.release_date && new Date(work.release_date) > new Date() ? `<div class="absolute inset-0 bg-black/40 flex items-center justify-center text-white text-[10px] font-bold">PRÓXIMAMENTE</div>` : ''}
+            </div>
+            <div class="px-1">
+              <h4 class="font-bold text-sm text-slate-800 line-clamp-1">${work.title}</h4>
+              <p class="text-xs text-slate-400 line-clamp-1">${work.author_name || 'Admin'}</p>
+            </div>
+          </div>
+        `;
+      };
+
+      // 6. DETALLE DE OBRA
+      window.openWorkDetail = async (id) => {
+        const { data: work } = await supabase.from('works').select('*').eq('id', id).single();
+        const { data: chapters } = await supabase.from('chapters').select('*').eq('work_id', id).order('chapter_number', { ascending: true });
+        
+        // Incrementar vistas
+        await supabase.from('works').update({ views_count: work.views_count + 1 }).eq('id', id);
+        addToLibrary(id);
+
+        modalContent.innerHTML = `
+          <div class="space-y-6">
+            <!-- Netflix Style Header -->
+            <div class="relative h-96 -mx-6 -mt-6 rounded-b-[40px] overflow-hidden shadow-2xl">
+              <img src="${work.cover_url}" class="w-full h-full object-cover">
+              <div class="absolute inset-0 bg-gradient-to-t from-white via-white/20 to-transparent"></div>
+              <div class="absolute bottom-6 left-6 right-6">
+                <div class="flex gap-2 mb-3">
+                  ${work.categories.map(c => `<span class="px-3 py-1 bg-black/10 backdrop-blur-md text-slate-900 text-[10px] font-bold rounded-full">${c}</span>`).join('')}
+                </div>
+                <h2 class="text-3xl font-black text-slate-900 leading-tight">${work.title}</h2>
+                <p class="text-slate-500 font-bold text-sm mt-1">${work.status} • ${work.type}</p>
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex items-center justify-between">
+              <div class="flex gap-4">
+                <button class="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-600">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+                </button>
+                <button onclick="shareWork('${work.title}', '${id}')" class="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-600">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/></svg>
+                </button>
+              </div>
+              <button class="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-600">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+              </button>
+            </div>
+
+            <!-- Synopsis -->
+            <div class="space-y-2">
+              <h3 class="font-bold text-slate-900">Sinopsis</h3>
+              <p id="synopsis-text" class="text-slate-600 text-sm leading-relaxed line-clamp-3">${work.synopsis}</p>
+              <button id="read-more-btn" class="text-[#ff4757] text-xs font-bold uppercase">Leer más</button>
+            </div>
+
+            <!-- Episodes -->
+            <div class="space-y-4">
+              <div class="flex justify-between items-center">
+                <h3 class="font-bold text-slate-900">Episodios (${chapters.length})</h3>
+                <button class="text-slate-400 text-xs font-bold">Ordenar ↓</button>
+              </div>
+              <div class="space-y-3">
+                ${chapters.slice(0, 5).map(ch => createChapterRow(ch)).join('')}
+                ${chapters.length > 5 ? `<button class="w-full py-4 bg-slate-50 rounded-2xl text-slate-400 font-bold text-sm">Ver más episodios</button>` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+
+        document.getElementById('read-more-btn').onclick = () => {
+          const text = document.getElementById('synopsis-text');
+          text.classList.toggle('line-clamp-3');
+          document.getElementById('read-more-btn').innerText = text.classList.contains('line-clamp-3') ? 'Leer más' : 'Leer menos';
         };
+
         modalOverlay.classList.remove('hidden');
         setTimeout(() => { modalOverlay.classList.add('opacity-100'); detailModal.classList.add('open'); }, 10);
       };
 
-      const closeModal = () => {
-        detailModal.classList.remove('open');
-        modalOverlay.classList.remove('opacity-100');
-        setTimeout(() => modalOverlay.classList.add('hidden'), 400);
-      };
-      modalOverlay.onclick = closeModal;
-
-      const createCard = (item) => {
-        const card = document.createElement('div');
-        card.className = 'qtoon-card flex-shrink-0 w-40 space-y-2 cursor-pointer';
-        card.innerHTML = `
-          <div class="relative aspect-[3/4] rounded-[28px] overflow-hidden bg-slate-100 shadow-sm">
-            <img src="${item.image}" class="w-full h-full object-cover" loading="lazy">
-            <div class="absolute top-2 left-2 px-2 py-1 bg-white/90 backdrop-blur-md rounded-full text-[8px] font-bold uppercase text-[#ff4757]">${item.type}</div>
+      const createChapterRow = (ch) => `
+        <div class="flex items-center gap-4 p-2 hover:bg-slate-50 rounded-2xl transition-colors cursor-pointer" onclick="startReading('${ch.id}')">
+          <div class="w-24 h-16 bg-slate-100 rounded-xl overflow-hidden flex-shrink-0">
+            <img src="${ch.cover_url || 'https://via.placeholder.com/100x60'}" class="w-full h-full object-cover">
           </div>
-          <div class="px-1">
-            <h4 class="font-bold text-sm text-slate-800 line-clamp-1">${item.title}</h4>
-            <p class="text-xs text-slate-400 line-clamp-1">${item.author}</p>
+          <div class="flex-1">
+            <h4 class="font-bold text-slate-800 text-sm">Capítulo ${ch.chapter_number}</h4>
+            <p class="text-xs text-slate-400">${new Date(ch.created_at).toLocaleDateString()}</p>
+          </div>
+          <div class="text-slate-300">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+          </div>
+        </div>
+      `;
+
+      // 7. LECTOR INMERSIVO
+      window.startReading = async (chapterId) => {
+        closeModal();
+        readerUI.classList.remove('hidden');
+        readerPages.innerHTML = '<div class="h-screen flex items-center justify-center"><div class="loader w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin"></div></div>';
+        
+        const { data: pages } = await supabase.from('pages').select('*').eq('chapter_id', chapterId).order('order_index', { ascending: true });
+        
+        readerPages.innerHTML = pages.map(p => `<img src="${p.image_url}" class="w-full max-w-3xl object-contain" loading="lazy">`).join('');
+        
+        // Touch events
+        let controlsTimeout;
+        readerUI.onclick = () => {
+          readerControls.classList.toggle('opacity-0');
+          readerControls.classList.toggle('pointer-events-none');
+          clearTimeout(controlsTimeout);
+          if (!readerControls.classList.contains('opacity-0')) {
+            controlsTimeout = setTimeout(() => {
+              readerControls.classList.add('opacity-0');
+              readerControls.classList.add('pointer-events-none');
+            }, 3000);
+          }
+        };
+
+        document.getElementById('reader-back').onclick = (e) => { e.stopPropagation(); readerUI.classList.add('hidden'); };
+        document.getElementById('reader-notify').onclick = (e) => {
+          e.stopPropagation();
+          alert("ENTENDÍDO, RECIBÍRAS UNA NOTIFICACIÓN DE TU CAMPANA CUANDO HAYA UNA NUEVA ACTUALIZACIÓN DE CAPITULO");
+        };
+      };
+
+      // 8. ESTUDIO DEL ADMINISTRADOR
+      const renderStudio = () => {
+        mainContent.innerHTML = `
+          <div class="space-y-8">
+            <div class="flex items-center justify-between">
+              <h2 class="text-3xl font-black text-slate-900">Estudio QToon</h2>
+              <button id="new-work-btn" class="w-12 h-12 bg-[#ff4757] text-white rounded-2xl flex items-center justify-center shadow-lg shadow-red-200">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+              </button>
+            </div>
+            
+            <div id="studio-content" class="space-y-6">
+              <p class="text-slate-400 text-center py-20">Pulsa + para crear una nueva obra.</p>
+            </div>
           </div>
         `;
-        card.onclick = () => openModal(item);
-        return card;
+
+        document.getElementById('new-work-btn').onclick = startStudioFlow;
       };
 
-      const renderSection = async (title, fetchFn) => {
-        const safeId = title.replace(/[^a-z0-9]/gi, '');
-        const sectionEl = document.createElement('div');
-        sectionEl.className = 'space-y-4';
-        sectionEl.innerHTML = `
-          <div class="flex justify-between items-center">
-            <h3 class="text-xl font-bold text-slate-900">${title}</h3>
-            <button class="text-[#ff4757] text-xs font-bold uppercase tracking-wider">Ver todo</button>
-          </div>
-          <div class="flex gap-4 overflow-x-auto hide-scrollbar pb-4 min-h-[200px] items-center justify-center" id="section-container-${safeId}">
-            <div class="loader w-8 h-8 border-4 border-slate-100 rounded-full"></div>
-          </div>
-        `;
-        mainContent.appendChild(sectionEl);
-        const container = sectionEl.querySelector(`#section-container-${safeId}`);
-        try {
-          const data = await fetchFn();
-          container.innerHTML = '';
-          container.classList.remove('justify-center');
-          if (data.length === 0) container.innerHTML = '<p class="text-slate-400 text-sm">No hay contenido.</p>';
-          else data.forEach(item => container.appendChild(createCard(item)));
-        } catch (err) {
-          container.innerHTML = `<div class="text-center space-y-2"><p class="text-xs text-red-400">Error de conexión</p><button class="text-[10px] font-bold uppercase text-[#ff4757] border border-[#ff4757]/20 px-3 py-1 rounded-full" onclick="location.reload()">Reintentar</button></div>`;
-        }
+      const startStudioFlow = () => {
+        let step = 1;
+        let workData = { 
+          type: 'Manhwa', 
+          status: 'En emisión', 
+          categories: [], 
+          tags: [],
+          cover_url: 'https://via.placeholder.com/300x400?text=Portada'
+        };
+
+        const categoriesList = ['Acción', 'Aventura', 'Comedia', 'Drama', 'Fantasía', 'Romance', 'Sci-Fi', 'Terror', 'Recuentos de la vida', 'Deportes', 'Misterio', 'Psicológico'];
+
+        const renderStep = () => {
+          mainContent.innerHTML = `
+            <div class="space-y-8 pb-20">
+              <div class="flex items-center gap-4">
+                <button id="studio-back" class="p-2 bg-slate-100 rounded-full text-slate-600"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+                <h3 class="text-xl font-bold">Paso ${step} de 4</h3>
+              </div>
+              <div id="step-container" class="space-y-6"></div>
+            </div>
+          `;
+
+          document.getElementById('studio-back').onclick = () => {
+            if (step > 1) { step--; renderStep(); }
+            else renderStudio();
+          };
+
+          const container = document.getElementById('step-container');
+
+          if (step === 1) {
+            container.innerHTML = `
+              <div class="space-y-6">
+                <div class="space-y-2">
+                  <label class="text-sm font-bold text-slate-400 uppercase tracking-widest">Tipo de Obra</label>
+                  <div class="grid grid-cols-3 gap-3">
+                    ${['Manhwa', 'Manga', 'Comic'].map(t => `
+                      <button class="p-4 rounded-2xl border-2 transition-all font-bold ${workData.type === t ? 'border-[#ff4757] bg-red-50 text-[#ff4757]' : 'border-slate-100 text-slate-400'}" onclick="updateWorkData({type: '${t}'})">${t}</button>
+                    `).join('')}
+                  </div>
+                </div>
+                <div class="space-y-2">
+                  <label class="text-sm font-bold text-slate-400 uppercase tracking-widest">Información Básica</label>
+                  <input type="text" id="work-title" placeholder="Título de la obra" class="w-full p-5 bg-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-[#ff4757]/20" value="${workData.title || ''}">
+                  <textarea id="work-synopsis" placeholder="Sinopsis..." class="w-full p-5 bg-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-[#ff4757]/20 h-32">${workData.synopsis || ''}</textarea>
+                </div>
+                <div class="space-y-2">
+                  <label class="text-sm font-bold text-slate-400 uppercase tracking-widest">Estado</label>
+                  <div class="flex gap-3">
+                    ${['En emisión', 'Finalizado'].map(s => `
+                      <button class="flex-1 p-4 rounded-2xl border-2 transition-all font-bold ${workData.status === s ? 'border-[#ff4757] bg-red-50 text-[#ff4757]' : 'border-slate-100 text-slate-400'}" onclick="updateWorkData({status: '${s}'})">${s}</button>
+                    `).join('')}
+                  </div>
+                </div>
+                <button onclick="nextStep()" class="qtoon-btn w-full py-5 bg-[#ff4757] text-white font-bold shadow-lg shadow-red-200">Continuar</button>
+              </div>
+            `;
+          } else if (step === 2) {
+            container.innerHTML = `
+              <div class="space-y-6">
+                <label class="text-sm font-bold text-slate-400 uppercase tracking-widest">Categorías (Máx 3)</label>
+                <div class="flex flex-wrap gap-2">
+                  ${categoriesList.map(c => `
+                    <button class="px-4 py-2 rounded-full border-2 transition-all text-sm font-bold ${workData.categories.includes(c) ? 'border-[#ff4757] bg-[#ff4757] text-white' : 'border-slate-100 text-slate-400'}" onclick="toggleCategory('${c}')">${c}</button>
+                  `).join('')}
+                </div>
+                <button onclick="nextStep()" class="qtoon-btn w-full py-5 bg-[#ff4757] text-white font-bold shadow-lg shadow-red-200">Continuar</button>
+              </div>
+            `;
+          } else if (step === 3) {
+            container.innerHTML = `
+              <div class="space-y-6">
+                <label class="text-sm font-bold text-slate-400 uppercase tracking-widest">Portada de la Obra</label>
+                <div class="aspect-[3/4] w-48 mx-auto rounded-[32px] overflow-hidden bg-slate-100 relative group cursor-pointer" onclick="document.getElementById('cover-upload').click()">
+                  <img id="cover-preview" src="${workData.cover_url}" class="w-full h-full object-cover">
+                  <div class="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+                  </div>
+                </div>
+                <input type="file" id="cover-upload" class="hidden" accept="image/*" onchange="handleCoverUpload(event)">
+                <p class="text-center text-xs text-slate-400">Recomendado: 600x800px</p>
+                <button onclick="nextStep()" class="qtoon-btn w-full py-5 bg-[#ff4757] text-white font-bold shadow-lg shadow-red-200">Continuar</button>
+              </div>
+            `;
+          } else if (step === 4) {
+            container.innerHTML = `
+              <div class="space-y-6">
+                <div class="p-6 bg-slate-50 rounded-[32px] space-y-4">
+                  <h4 class="font-bold text-slate-900">Resumen de Publicación</h4>
+                  <div class="flex gap-4">
+                    <img src="${workData.cover_url}" class="w-20 h-28 object-cover rounded-xl">
+                    <div class="space-y-1">
+                      <p class="font-bold text-slate-800">${workData.title}</p>
+                      <p class="text-xs text-slate-400">${workData.type} • ${workData.status}</p>
+                      <div class="flex flex-wrap gap-1 mt-2">
+                        ${workData.categories.map(c => `<span class="text-[8px] font-bold bg-slate-200 px-2 py-0.5 rounded-full">${c}</span>`).join('')}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <button id="publish-btn" class="qtoon-btn w-full py-5 bg-[#ff4757] text-white font-bold shadow-lg shadow-red-200">Publicar Obra</button>
+              </div>
+            `;
+            document.getElementById('publish-btn').onclick = publishWork;
+          }
+        };
+
+        window.updateWorkData = (data) => { Object.assign(workData, data); renderStep(); };
+        
+        window.toggleCategory = (cat) => {
+          if (workData.categories.includes(cat)) {
+            workData.categories = workData.categories.filter(c => c !== cat);
+          } else if (workData.categories.length < 3) {
+            workData.categories.push(cat);
+          }
+          renderStep();
+        };
+
+        window.handleCoverUpload = async (e) => {
+          const file = e.target.files[0];
+          if (!file || !supabase) return;
+          
+          const preview = document.getElementById('cover-preview');
+          preview.src = URL.createObjectURL(file);
+          
+          // En un entorno real, subiríamos a Supabase Storage aquí
+          // const { data, error } = await supabase.storage.from('covers').upload(`${Date.now()}-${file.name}`, file);
+          // if (data) workData.cover_url = supabase.storage.from('covers').getPublicUrl(data.path).data.publicUrl;
+          
+          // Simulación para demo si no hay credenciales
+          workData.cover_url = preview.src;
+        };
+
+        window.nextStep = () => {
+          if (step === 1) {
+            workData.title = document.getElementById('work-title').value;
+            workData.synopsis = document.getElementById('work-synopsis').value;
+            if (!workData.title) return alert("El título es obligatorio");
+          }
+          step++;
+          renderStep();
+        };
+
+        const publishWork = async () => {
+          if (!supabase) return alert("Configura Supabase primero");
+          const btn = document.getElementById('publish-btn');
+          btn.disabled = true;
+          btn.innerHTML = '<div class="loader w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>';
+
+          const { error } = await supabase.from('works').insert([{
+            title: workData.title,
+            synopsis: workData.synopsis,
+            type: workData.type,
+            status: workData.status,
+            cover_url: workData.cover_url,
+            categories: workData.categories,
+            author_name: currentUser.displayName || 'Admin'
+          }]);
+
+          if (error) {
+            alert("Error al publicar: " + error.message);
+            btn.disabled = false;
+            btn.innerText = "Publicar Obra";
+          } else {
+            alert("¡Obra publicada con éxito!");
+            renderStudio();
+          }
+        };
+        
+        renderStep();
       };
 
-      const renderHome = async () => {
-        mainContent.innerHTML = '';
-        renderSection('Libros Tendencia', APIs.books.trending);
-        renderSection('Podcasts Populares', APIs.podcasts.trending);
-        renderSection('Manga & Comics', APIs.manga.trending);
+      // 9. EVENTOS Y NAVEGACIÓN
+      adminStudioIcon.onclick = () => window.switchView('studio');
+
+      window.handleSectionClick = (title) => {
+        alert(`Explorando sección: ${title}`);
       };
 
       const renderSearch = () => {
         mainContent.innerHTML = `
           <div class="space-y-6">
             <div class="relative">
-              <input type="text" id="global-search" placeholder="Busca libros, podcasts o manga..." class="w-full p-5 bg-[#f1f2f6] rounded-[28px] outline-none focus:ring-4 focus:ring-[#ff4757]/10 transition-all pl-14">
+              <input type="text" id="search-input" placeholder="Busca títulos, autores o géneros..." class="w-full p-5 bg-slate-100 rounded-[24px] outline-none focus:ring-2 focus:ring-[#ff4757]/20 transition-all pl-14">
               <svg class="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
             </div>
             <div id="search-results" class="grid grid-cols-2 gap-6">
-              <div class="col-span-2 text-center py-20 text-slate-400"><p>Escribe algo para empezar...</p></div>
+              <p class="col-span-2 text-center text-slate-400 py-20">Escribe algo para empezar a buscar.</p>
             </div>
           </div>
         `;
-        const searchInput = document.getElementById('global-search');
-        const resultsContainer = document.getElementById('search-results');
-        const performSearch = debounce(async (q) => {
-          if (!q) return;
-          resultsContainer.innerHTML = '<div class="col-span-2 flex justify-center py-10"><div class="loader w-10 h-10 border-4 border-slate-100 rounded-full"></div></div>';
-          try {
-            const [books, podcasts, manga] = await Promise.all([APIs.books.search(q), APIs.podcasts.search(q), APIs.manga.search(q)]);
-            const allResults = [...books, ...podcasts, ...manga];
-            resultsContainer.innerHTML = '';
-            if (allResults.length === 0) resultsContainer.innerHTML = '<p class="col-span-2 text-center py-10 text-slate-400">Sin resultados.</p>';
-            else allResults.forEach(item => { const card = createCard(item); card.classList.replace('w-40', 'w-full'); resultsContainer.appendChild(card); });
-          } catch (err) { resultsContainer.innerHTML = `<p class="col-span-2 text-center text-red-500 py-10">Error: ${err.message}</p>`; }
-        }, 500);
-        searchInput.oninput = (e) => performSearch(e.target.value);
+
+        document.getElementById('search-input').oninput = async (e) => {
+          const query = e.target.value.toLowerCase();
+          if (query.length < 2) return;
+          const { data } = await supabase.from('works').select('*').ilike('title', `%${query}%`);
+          const results = document.getElementById('search-results');
+          results.innerHTML = data && data.length > 0 ? data.map(w => createWorkCard(w, true)).join('') : '<p class="col-span-2 text-center text-slate-400 py-20">No se encontraron resultados.</p>';
+        };
       };
 
-      const renderLibrary = () => {
-        if (library.length === 0) {
-          mainContent.innerHTML = `<div class="flex flex-col items-center justify-center py-20 text-center space-y-4"><div class="w-24 h-24 bg-[#f1f2f6] rounded-full flex items-center justify-center text-slate-300"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6.5 18H20"/></svg></div><h3 class="text-xl font-bold text-slate-900">Biblioteca vacía</h3><button onclick="window.switchView('home')" class="qtoon-btn px-8 py-3 bg-[#ff4757] text-white font-bold">Explorar</button></div>`;
-          return;
-        }
-        mainContent.innerHTML = '<div class="grid grid-cols-2 gap-6" id="lib-grid"></div>';
-        const grid = document.getElementById('lib-grid');
-        library.forEach(item => {
-          const card = createCard(item); card.classList.replace('w-40', 'w-full');
-          const removeBtn = document.createElement('button');
-          removeBtn.className = 'absolute top-2 right-2 w-8 h-8 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center text-[#ff4757] shadow-sm z-10';
-          removeBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
-          removeBtn.onclick = (e) => { e.stopPropagation(); removeFromLibrary(item.id); };
-          card.querySelector('.relative').appendChild(removeBtn);
-          grid.appendChild(card);
-        });
+      const renderLibrary = async () => {
+        await updateLibrary();
+        mainContent.innerHTML = `
+          <div class="space-y-6">
+            <h2 class="text-2xl font-bold text-slate-900">Mi Biblioteca</h2>
+            <div class="grid grid-cols-2 gap-6">
+              ${library.length > 0 ? library.map(item => createWorkCard(item.works, true)).join('') : '<p class="col-span-2 text-center text-slate-400 py-20">Tu biblioteca está vacía.</p>'}
+            </div>
+          </div>
+        `;
       };
 
       const renderProfile = () => {
         mainContent.innerHTML = `
-          <div class="space-y-8">
-            <div class="bg-[#f1f2f6] p-8 rounded-[32px] flex flex-col items-center text-center space-y-4">
-              <div class="w-24 h-24 rounded-full border-4 border-white shadow-lg overflow-hidden"><img src="${currentUser.photoURL || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + currentUser.email}" class="w-full h-full object-cover"></div>
-              <div><h3 class="text-2xl font-bold text-slate-900">${currentUser.displayName || 'Usuario QToon'}</h3><p class="text-slate-400">${currentUser.email}</p></div>
+          <div class="space-y-8 text-center py-10">
+            <div class="relative inline-block">
+              <img src="${currentUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUser.email}`}" class="w-32 h-32 rounded-full border-4 border-white shadow-xl mx-auto">
+              <div class="absolute bottom-0 right-0 w-8 h-8 bg-[#ff4757] rounded-full border-4 border-white"></div>
             </div>
-            <div id="install-container" class="hidden">
-              <button id="install-btn" class="qtoon-btn w-full p-5 bg-blue-50 text-blue-600 font-bold flex items-center justify-center gap-2 mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-                Instalar App en mi móvil
-              </button>
+            <div>
+              <h3 class="text-2xl font-bold text-slate-900">${currentUser.displayName || 'Usuario QToon'}</h3>
+              <p class="text-slate-400">${currentUser.email}</p>
             </div>
-            <button id="logout-btn" class="qtoon-btn w-full p-5 bg-red-50 text-[#ff4757] font-bold flex items-center justify-center gap-2">Cerrar Sesión</button>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="p-6 bg-slate-50 rounded-[32px]">
+                <span class="block text-2xl font-black text-[#ff4757]">${library.length}</span>
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Obras</span>
+              </div>
+              <div class="p-6 bg-slate-50 rounded-[32px]">
+                <span class="block text-2xl font-black text-[#ff4757]">0</span>
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Leídos</span>
+              </div>
+            </div>
+            <div class="space-y-3">
+              <button id="install-btn" class="hidden qtoon-btn w-full py-5 bg-slate-900 text-white font-bold">Instalar App</button>
+              <button id="logout-btn" class="qtoon-btn w-full py-5 bg-slate-100 text-slate-600 font-bold">Cerrar Sesión</button>
+            </div>
           </div>
         `;
+
         document.getElementById('logout-btn').onclick = () => signOut(auth);
         
-        // Manejo del botón de instalación
-        const installContainer = document.getElementById('install-container');
+        const installBtn = document.getElementById('install-btn');
         if (deferredPrompt) {
-          installContainer.classList.remove('hidden');
-          document.getElementById('install-btn').onclick = async () => {
+          installBtn.classList.remove('hidden');
+          installBtn.onclick = async () => {
             deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
-            if (outcome === 'accepted') {
-              deferredPrompt = null;
-              installContainer.classList.add('hidden');
-            }
+            if (outcome === 'accepted') deferredPrompt = null;
+            installBtn.classList.add('hidden');
           };
         }
       };
 
-      // 7. NAVEGACIÓN
       window.switchView = (view) => {
         currentView = view;
         navItems.forEach(item => {
           if (item.dataset.view === view) { item.classList.add('active', 'text-[#ff4757]'); item.classList.remove('text-slate-300'); }
           else { item.classList.remove('active', 'text-[#ff4757]'); item.classList.add('text-slate-300'); }
         });
+        
+        mainHeader.classList.remove('hidden');
         if (view === 'home') renderHome();
         else if (view === 'search') renderSearch();
         else if (view === 'library') renderLibrary();
         else if (view === 'profile') renderProfile();
+        else if (view === 'studio') renderStudio();
         window.scrollTo(0, 0);
       };
 
-      navItems.forEach(item => { item.onclick = () => window.switchView(item.dataset.view); });
-
-      // 8. AUTENTICACIÓN
-      const showTerms = () => { termsOverlay.classList.remove('hidden'); termsModal.classList.remove('hidden'); setTimeout(() => termsOverlay.classList.add('opacity-100'), 10); };
-      const closeTerms = () => { termsOverlay.classList.remove('opacity-100'); setTimeout(() => { termsOverlay.classList.add('hidden'); termsModal.classList.add('hidden'); }, 300); };
-      document.getElementById('show-terms-btn').onclick = (e) => { e.preventDefault(); showTerms(); };
-      document.getElementById('close-terms-btn').onclick = closeTerms;
-      termsOverlay.onclick = closeTerms;
-
-      const setAuthLoading = (isLoading) => {
-        ['email-login', 'email-register', 'google-login'].forEach(id => {
-          const btn = document.getElementById(id);
-          if (btn) { btn.disabled = isLoading; btn.style.opacity = isLoading ? '0.5' : '1'; }
-        });
-        if (isLoading) authError.classList.add('hidden');
-      };
-
       onAuthStateChanged(auth, (user) => {
-        setAuthLoading(false);
         if (user) {
           currentUser = user;
           authView.classList.add('hidden');
           headerAvatarImg.src = user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`;
+          adminStudioIcon.classList.toggle('hidden', !isAdmin());
+          updateLibrary();
           window.switchView('home');
         } else {
           currentUser = null;
@@ -557,40 +770,45 @@
         }
       });
 
-      document.getElementById('google-login').onclick = async () => {
-        if (!termsCheckbox.checked) return alert('Acepta los términos');
-        setAuthLoading(true);
-        try { await signInWithPopup(auth, googleProvider); } catch (err) { setAuthLoading(false); authError.innerText = err.message; authError.classList.remove('hidden'); }
+      window.shareWork = (title, id) => {
+        const text = `¡NO DEJO DE LEER ${title}! TE INVITO A LEER! ${window.location.origin}/?work=${id}`;
+        if (navigator.share) {
+          navigator.share({ title, text, url: window.location.href });
+        } else {
+          alert("Copiado al portapapeles: " + text);
+        }
       };
 
-      document.getElementById('email-login').onclick = async () => {
+      // 10. INICIALIZACIÓN DE EVENTOS
+      document.getElementById('google-login').onclick = () => signInWithPopup(auth, googleProvider);
+      document.getElementById('email-login').onclick = () => {
         const email = document.getElementById('email-input').value;
         const pass = document.getElementById('pass-input').value;
-        if (!email || !pass || !termsCheckbox.checked) return alert('Completa los campos y acepta los términos');
-        setAuthLoading(true);
-        try { await signInWithEmailAndPassword(auth, email, pass); } catch (err) { setAuthLoading(false); authError.innerText = err.message; authError.classList.remove('hidden'); }
+        if (!email || !pass) return alert("Completa todos los campos");
+        signInWithEmailAndPassword(auth, email, pass).catch(e => alert(e.message));
       };
-
-      document.getElementById('email-register').onclick = async () => {
+      document.getElementById('email-register').onclick = () => {
         const email = document.getElementById('email-input').value;
         const pass = document.getElementById('pass-input').value;
-        if (!email || !pass || !termsCheckbox.checked) return alert('Completa los campos y acepta los términos');
-        setAuthLoading(true);
-        try { await createUserWithEmailAndPassword(auth, email, pass); } catch (err) { setAuthLoading(false); authError.innerText = err.message; authError.classList.remove('hidden'); }
+        if (!email || !pass) return alert("Completa todos los campos");
+        createUserWithEmailAndPassword(auth, email, pass).catch(e => alert(e.message));
       };
-
-      // 9. SERVICE WORKER & PWA LOGIC
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js').then(reg => console.log('SW listo')).catch(err => console.log('SW error', err));
-        });
-      }
 
       window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         deferredPrompt = e;
-        if (currentView === 'profile') renderProfile();
       });
+
+      navItems.forEach(item => {
+        item.onclick = () => window.switchView(item.dataset.view);
+      });
+
+      // Service Worker Registration
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js').then(reg => console.log('SW registered')).catch(err => console.log('SW error', err));
+        });
+      }
     </script>
   </body>
 </html>
