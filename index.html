@@ -3,9 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>QToon Content Hub</title>
+    <title>NexoToon Content Hub</title>
     <!-- Favicon (Logo QToon) -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='28' fill='%23ff4757'/><text x='50%' y='65%' font-family='Arial' font-weight='bold' font-size='60' fill='white' text-anchor='middle'>Q</text></svg>">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='28' fill='%23ff4757'/><text x='50%' y='65%' font-family='Arial' font-weight='bold' font-size='60' fill='white' text-anchor='middle'>N</text></svg>">
     <!-- PWA Manifest -->
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#ff4757">
@@ -77,9 +77,9 @@
         <div class="w-full max-w-md space-y-8">
           <div class="text-center">
             <div class="w-20 h-20 bg-[#ff4757] rounded-[28px] mx-auto flex items-center justify-center shadow-lg shadow-red-200 mb-4">
-              <span class="text-white text-4xl font-bold">Q</span>
+              <span class="text-white text-4xl font-bold">N</span>
             </div>
-            <h1 class="text-3xl font-bold text-slate-900">Bienvenido</h1>
+            <h1 class="text-3xl font-bold text-slate-900">NexoToon</h1>
             <p class="text-slate-500 mt-2">Tu hub de contenido favorito</p>
           </div>
           
@@ -117,7 +117,7 @@
       <div id="terms-modal" class="fixed inset-x-6 top-1/2 -translate-y-1/2 bg-white z-[70] max-h-[70vh] rounded-[32px] p-8 shadow-2xl hidden flex-col">
         <h3 class="text-xl font-bold text-slate-900 mb-4">Términos y Condiciones</h3>
         <div class="overflow-y-auto pr-2 text-sm text-slate-600 space-y-4 flex-1">
-          <p><strong>1. Uso del Servicio:</strong> QToon Content Hub es un agregador de contenido gratuito. No alojamos contenido directamente, solo facilitamos el acceso a APIs públicas.</p>
+          <p><strong>1. Uso del Servicio:</strong> NexoToon Content Hub es un agregador de contenido gratuito. No alojamos contenido directamente, solo facilitamos el acceso a APIs públicas.</p>
           <p><strong>2. Privacidad:</strong> Tus datos de autenticación son gestionados por Firebase (Google). Tu biblioteca personal se guarda localmente en tu dispositivo.</p>
           <p><strong>3. Responsabilidad:</strong> El usuario es responsable del uso que haga de la aplicación y de respetar los derechos de autor del contenido accedido.</p>
           <p><strong>4. Cambios:</strong> Nos reservamos el derecho de modificar estos términos en cualquier momento.</p>
@@ -130,10 +130,10 @@
       <header class="p-6 flex justify-between items-center sticky top-0 bg-white/80 backdrop-blur-md z-30">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 bg-[#ff4757] rounded-xl flex items-center justify-center shadow-lg shadow-red-200">
-            <span class="text-white text-xl font-bold">Q</span>
+            <span class="text-white text-xl font-bold">N</span>
           </div>
           <div>
-            <h2 id="view-title" class="text-2xl font-bold text-slate-900 leading-tight">Inicio</h2>
+            <h2 id="view-title" class="text-2xl font-bold text-slate-900 leading-tight">NexoToon</h2>
             <p id="view-subtitle" class="text-sm text-slate-400">Explora tendencias</p>
           </div>
         </div>
@@ -265,7 +265,7 @@
       const readerPages = document.getElementById('reader-pages');
 
       // 4. UTILIDADES
-      const isAdmin = () => currentUser && currentUser.email === ADMIN_EMAIL;
+      const isAdmin = () => currentUser && currentUser.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
       const mainHeader = document.querySelector('header');
 
       const closeModal = () => {
@@ -470,7 +470,7 @@
         mainContent.innerHTML = `
           <div class="space-y-8">
             <div class="flex items-center justify-between">
-              <h2 class="text-3xl font-black text-slate-900">Estudio QToon</h2>
+              <h2 class="text-3xl font-black text-slate-900">Estudio NexoToon</h2>
               <button id="new-work-btn" class="w-12 h-12 bg-[#ff4757] text-white rounded-2xl flex items-center justify-center shadow-lg shadow-red-200">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
               </button>
@@ -706,7 +706,7 @@
               <div class="absolute bottom-0 right-0 w-8 h-8 bg-[#ff4757] rounded-full border-4 border-white"></div>
             </div>
             <div>
-              <h3 class="text-2xl font-bold text-slate-900">${currentUser.displayName || 'Usuario QToon'}</h3>
+              <h3 class="text-2xl font-bold text-slate-900">${currentUser.displayName || 'Usuario NexoToon'}</h3>
               <p class="text-slate-400">${currentUser.email}</p>
             </div>
             <div class="grid grid-cols-2 gap-4">

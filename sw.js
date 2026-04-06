@@ -1,4 +1,4 @@
-const CACHE_NAME = 'qtoon-v1';
+const CACHE_NAME = 'nexotoon-v1';
 const ASSETS = [
   './',
   './index.html',

@@ -1,5 +1,5 @@
 {
-  "name": "QToon Content Hub",
-  "description": "Agregador de Libros, Manga y Podcasts con estilo QToon Modern y Firebase Auth.",
+  "name": "NexoToon",
+  "description": "Tu portal de Manhwas y Cómics con estilo moderno y Supabase.",
   "requestFramePermissions": []
 }
