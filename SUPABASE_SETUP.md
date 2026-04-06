@@ -1,4 +1,4 @@
-# Configuración de Supabase para QToon Content Hub
+# Configuración de Supabase para NexoToon Content Hub
 
 Sigue estos pasos para configurar tu proyecto de Supabase y que la aplicación funcione correctamente.
 

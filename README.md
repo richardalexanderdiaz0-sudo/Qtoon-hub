@@ -1,6 +1,6 @@
-# QToon Content Hub 🚀
+# NexoToon Content Hub 🚀
 
-¡Tu agregador de contenido gratuito favorito (Libros, Manga y Podcasts) con estilo QToon Modern!
+¡Tu agregador de contenido gratuito favorito (Libros, Manga y Podcasts) con estilo NexoToon Modern!
 
 ## 📦 Cómo publicar en GitHub Pages (Paso a Paso)
 
