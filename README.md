@@ -1,20 +1,26 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# QToon Content Hub 🚀
 
-# Run and deploy your AI Studio app
+¡Tu agregador de contenido gratuito favorito (Libros, Manga y Podcasts) con estilo QToon Modern!
 
-This contains everything you need to run your app locally.
+## 📦 Cómo publicar en GitHub Pages (Paso a Paso)
 
-View your app in AI Studio: https://ai.studio/apps/aac0f043-e5db-4aea-8748-9a9ebfa37890
+Este proyecto está diseñado para ser **Plug & Play**. Sigue estos pasos para tenerlo online en 2 minutos:
 
-## Run Locally
+1. **Crea un Repositorio en GitHub**: Ponle el nombre que quieras (ej: `qtoon-app`).
+2. **Sube el archivo `index.html`**: Solo necesitas este archivo. Puedes arrastrarlo directamente a la web de GitHub en tu repositorio.
+3. **Activa GitHub Pages**:
+   - Ve a la pestaña **Settings** de tu repositorio.
+   - En el menú de la izquierda, haz clic en **Pages**.
+   - En "Build and deployment", asegúrate de que esté seleccionado "Deploy from a branch".
+   - En "Branch", selecciona `main` (o la rama donde subiste el archivo) y la carpeta `/(root)`.
+   - Haz clic en **Save**.
+4. **¡Listo!**: En unos segundos, GitHub te dará una URL (ej: `https://tu-usuario.github.io/qtoon-app/`) donde tu app estará funcionando.
 
-**Prerequisites:**  Node.js
+## 🛠️ Tecnologías
+- **Vanilla JS**: Sin frameworks pesados.
+- **Firebase Auth**: Autenticación segura.
+- **Tailwind CSS**: Estilos modernos vía CDN.
+- **APIs**: OpenLibrary, iTunes y MangaDex.
 
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+---
+Desarrollado con ❤️ para la comunidad.
