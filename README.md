@@ -4,17 +4,21 @@
 
 ## 📦 Cómo publicar en GitHub Pages (Paso a Paso)
 
-Este proyecto está diseñado para ser **Plug & Play**. Sigue estos pasos para tenerlo online en 2 minutos:
+Este proyecto es una **PWA (Progressive Web App)**. Sigue estos pasos:
 
-1. **Crea un Repositorio en GitHub**: Ponle el nombre que quieras (ej: `qtoon-app`).
-2. **Sube el archivo `index.html`**: Solo necesitas este archivo. Puedes arrastrarlo directamente a la web de GitHub en tu repositorio.
-3. **Activa GitHub Pages**:
-   - Ve a la pestaña **Settings** de tu repositorio.
-   - En el menú de la izquierda, haz clic en **Pages**.
-   - En "Build and deployment", asegúrate de que esté seleccionado "Deploy from a branch".
-   - En "Branch", selecciona `main` (o la rama donde subiste el archivo) y la carpeta `/(root)`.
-   - Haz clic en **Save**.
-4. **¡Listo!**: En unos segundos, GitHub te dará una URL (ej: `https://tu-usuario.github.io/qtoon-app/`) donde tu app estará funcionando.
+1. **Crea un Repositorio en GitHub**: Ponle el nombre que quieras.
+2. **Sube los 3 archivos clave**:
+   - `index.html`
+   - `manifest.json`
+   - `sw.js`
+3. **Activa GitHub Pages**: Settings > Pages > Branch: main > Save.
+4. **Configura Firebase (VITAL para Google Login)**:
+   - Ve a [Firebase Console](https://console.firebase.google.com/).
+   - Entra en tu proyecto -> **Authentication** -> **Settings**.
+   - En **Authorized domains**, añade: `tu-usuario.github.io`.
+
+## 📱 Cómo instalar la App
+Una vez publicada, entra desde tu móvil. Ve a la pestaña de **Perfil** y verás un botón azul que dice **"Instalar App en mi móvil"**. ¡Haz clic y se añadirá a tu pantalla de inicio!
 
 ## 🛠️ Tecnologías
 - **Vanilla JS**: Sin frameworks pesados.

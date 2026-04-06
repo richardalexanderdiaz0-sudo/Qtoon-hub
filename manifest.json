@@ -1,0 +1,23 @@
+{
+  "name": "QToon Content Hub",
+  "short_name": "QToon",
+  "description": "Agregador de Libros, Manga y Podcasts con estilo QToon.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ff4757",
+  "icons": [
+    {
+      "src": "https://api.dicebear.com/7.x/initials/svg?seed=Q&backgroundColor=ff4757&fontSize=60",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://api.dicebear.com/7.x/initials/svg?seed=Q&backgroundColor=ff4757&fontSize=60",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
