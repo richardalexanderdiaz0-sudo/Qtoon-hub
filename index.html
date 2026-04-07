@@ -119,9 +119,9 @@
               </label>
             </div>
 
-            <div class="flex flex-col gap-3">
-              <button id="email-login" class="qtoon-btn w-full py-4 bg-[#ff4757] text-white font-bold shadow-lg shadow-red-200 disabled:opacity-50">Iniciar Sesión</button>
-              <button id="email-register" class="qtoon-btn w-full py-4 bg-white border-2 border-[#ff4757] text-[#ff4757] font-bold disabled:opacity-50">Crear Cuenta</button>
+            <div id="auth-buttons" class="flex flex-col gap-3">
+              <button id="email-login" class="qtoon-btn w-full py-4 bg-[#ff4757] text-white font-bold shadow-lg shadow-red-200">Iniciar Sesión</button>
+              <button id="email-register" class="qtoon-btn w-full py-4 bg-white border-2 border-[#ff4757] text-[#ff4757] font-bold">Registrarse (Crear Cuenta)</button>
             </div>
             <p id="auth-error" class="text-xs text-red-500 text-center hidden"></p>
           </div>
@@ -149,7 +149,10 @@
             <span class="text-white text-xl font-bold">N</span>
           </div>
           <div>
-            <h2 id="view-title" class="text-2xl font-bold text-slate-900 leading-tight">NexoToon</h2>
+            <div class="flex items-center gap-2">
+              <h2 id="view-title" class="text-2xl font-bold text-slate-900 leading-tight">NexoToon</h2>
+              <span id="admin-badge" class="hidden px-2 py-0.5 bg-red-500 text-white text-[8px] font-black rounded-full uppercase tracking-tighter">Admin</span>
+            </div>
             <p id="view-subtitle" class="text-sm text-slate-400">Explora tendencias</p>
           </div>
         </div>
@@ -321,9 +324,32 @@
 
       const updateAdminVisibility = () => {
         const admin = isAdmin();
-        console.log("[AdminVisibility] Admin:", admin, "Icon:", !!adminStudioIcon, "NavBtn:", !!navStudioBtn);
-        if (adminStudioIcon) adminStudioIcon.classList.toggle('hidden', !admin);
-        if (navStudioBtn) navStudioBtn.classList.toggle('hidden', !admin);
+        const icon = document.getElementById('admin-studio-icon');
+        const btn = document.getElementById('nav-studio-btn');
+        const badge = document.getElementById('admin-badge');
+        
+        console.log("[AdminVisibility] Admin:", admin, "IconFound:", !!icon, "NavBtnFound:", !!btn, "BadgeFound:", !!badge);
+        
+        if (badge) badge.classList.toggle('hidden', !admin);
+        
+        if (icon) {
+          if (admin) {
+            icon.classList.remove('hidden');
+            icon.style.display = 'flex';
+          } else {
+            icon.classList.add('hidden');
+            icon.style.display = 'none';
+          }
+        }
+        if (btn) {
+          if (admin) {
+            btn.classList.remove('hidden');
+            btn.style.display = 'flex';
+          } else {
+            btn.classList.add('hidden');
+            btn.style.display = 'none';
+          }
+        }
       };
 
       const closeModal = () => {
@@ -906,12 +932,14 @@
           authView.classList.add('hidden');
           headerAvatarImg.src = user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`;
           
+          console.log("[Auth] User logged in:", user.email);
           updateAdminVisibility();
           updateLibrary();
           window.switchView('home');
         } else {
           currentUser = null;
           authView.classList.remove('hidden');
+          console.log("[Auth] User logged out");
           updateAdminVisibility();
         }
       });
