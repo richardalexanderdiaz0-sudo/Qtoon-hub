@@ -72,6 +72,21 @@
   </head>
   <body class="bg-white text-slate-800">
     <div id="app" class="min-h-screen pb-24">
+      <!-- Offline View -->
+      <div id="offline-view" class="fixed inset-0 z-[200] bg-white flex flex-col items-center justify-center p-10 text-center hidden">
+        <div class="relative mb-8">
+          <div class="w-32 h-32 bg-slate-100 rounded-[40px] flex items-center justify-center text-slate-400">
+            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h.01"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/><path d="M5 12.859a10 10 0 0 1 14 0"/><path d="M2 9.28a15 15 0 0 1 20 0"/></svg>
+          </div>
+          <div class="absolute -top-2 -right-2 w-12 h-12 bg-[#ff4757] rounded-full border-4 border-white flex items-center justify-center shadow-lg">
+            <span class="text-white text-2xl font-black">?</span>
+          </div>
+        </div>
+        <h2 class="text-2xl font-bold text-slate-900 mb-2">Sin internet</h2>
+        <p class="text-slate-500 max-w-[240px] mx-auto leading-relaxed">No estás conectado a una red wifi</p>
+        <button onclick="window.location.reload()" class="mt-8 qtoon-btn px-8 py-4 bg-slate-900 text-white font-bold shadow-xl">Reintentar</button>
+      </div>
+
       <!-- Auth View (Hidden by default) -->
       <div id="auth-view" class="hidden fixed inset-0 z-50 bg-white flex flex-col items-center justify-center p-8">
         <div class="w-full max-w-md space-y-8">
@@ -140,7 +155,7 @@
         </div>
         <div class="flex items-center gap-4">
           <!-- Admin Studio Icon (Hidden by default) -->
-          <button id="admin-studio-icon" class="hidden w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-600 hover:bg-red-50 hover:text-[#ff4757] transition-all">
+          <button id="admin-studio-icon" class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-600 hover:bg-red-50 hover:text-[#ff4757] transition-all">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
           </button>
           <div id="user-avatar" class="w-10 h-10 bg-[#f1f2f6] rounded-full overflow-hidden border-2 border-white shadow-sm">
@@ -196,7 +211,7 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"/><path d="m17 5-5-3-5 3"/><path d="m17 19-5 3-5-3"/><path d="M2 12h20"/><path d="m5 7-3 5 3 5"/><path d="m19 7 3 5-3 5"/></svg>
           <span class="text-[10px] font-bold uppercase tracking-wider">Donación</span>
         </button>
-        <button id="nav-studio-btn" data-view="studio" class="nav-item hidden flex flex-col items-center gap-1 text-slate-300">
+        <button id="nav-studio-btn" data-view="studio" class="nav-item flex flex-col items-center gap-1 text-slate-300">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
           <span class="text-[10px] font-bold uppercase tracking-wider">Estudio</span>
         </button>
@@ -286,12 +301,30 @@
       const adminStudioIcon = document.getElementById('admin-studio-icon');
       const navStudioBtn = document.getElementById('nav-studio-btn');
       const readerUI = document.getElementById('reader-ui');
+
+      // Initial hide
+      if (adminStudioIcon) adminStudioIcon.classList.add('hidden');
+      if (navStudioBtn) navStudioBtn.classList.add('hidden');
       const readerControls = document.getElementById('reader-controls');
       const readerPages = document.getElementById('reader-pages');
 
       // 4. UTILIDADES
-      const isAdmin = () => currentUser && currentUser.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+      const isAdmin = () => {
+        if (!currentUser || !currentUser.email) return false;
+        const userEmail = currentUser.email.trim().toLowerCase();
+        const adminEmail = ADMIN_EMAIL.trim().toLowerCase();
+        const result = userEmail === adminEmail;
+        console.log(`[AdminCheck] User: "${userEmail}" | Admin: "${adminEmail}" | Match: ${result}`);
+        return result;
+      };
       const mainHeader = document.querySelector('header');
+
+      const updateAdminVisibility = () => {
+        const admin = isAdmin();
+        console.log("[AdminVisibility] Admin:", admin, "Icon:", !!adminStudioIcon, "NavBtn:", !!navStudioBtn);
+        if (adminStudioIcon) adminStudioIcon.classList.toggle('hidden', !admin);
+        if (navStudioBtn) navStudioBtn.classList.toggle('hidden', !admin);
+      };
 
       const closeModal = () => {
         modalOverlay.classList.remove('opacity-100');
@@ -733,6 +766,10 @@
             <div>
               <h3 class="text-2xl font-bold text-slate-900">${currentUser.displayName || 'Usuario NexoToon'}</h3>
               <p class="text-slate-400">${currentUser.email}</p>
+              ${isAdmin() ? 
+                '<span class="inline-block mt-2 px-3 py-1 bg-red-100 text-[#ff4757] text-[10px] font-black uppercase tracking-widest rounded-full">Administrador</span>' : 
+                `<span class="block mt-1 text-[8px] text-slate-300">Acceso estándar: ${currentUser.email}</span>`
+              }
             </div>
             <div class="grid grid-cols-2 gap-4">
               <div class="p-6 bg-slate-50 rounded-[32px]">
@@ -745,6 +782,7 @@
               </div>
             </div>
             <div class="space-y-3">
+              ${isAdmin() ? '<button onclick="window.switchView(\'studio\')" class="qtoon-btn w-full py-5 bg-[#ff4757] text-white font-bold shadow-lg shadow-red-200 mb-2">ENTRAR AL ESTUDIO (ADMIN)</button>' : ''}
               <button id="install-btn" class="hidden qtoon-btn w-full py-5 bg-slate-900 text-white font-bold">Instalar App</button>
               <button id="logout-btn" class="qtoon-btn w-full py-5 bg-slate-100 text-slate-600 font-bold">Cerrar Sesión</button>
             </div>
@@ -766,7 +804,9 @@
       };
 
       window.switchView = (view) => {
+        console.log("[SwitchView] Switching to:", view);
         currentView = view;
+        updateAdminVisibility();
         navItems.forEach(item => {
           if (item.dataset.view === view) { item.classList.add('active', 'text-[#ff4757]'); item.classList.remove('text-slate-300'); }
           else { item.classList.remove('active', 'text-[#ff4757]'); item.classList.add('text-slate-300'); }
@@ -860,23 +900,19 @@
       };
 
       onAuthStateChanged(auth, (user) => {
+        console.log("[Auth] State changed. User:", user ? user.email : "Logged out");
         if (user) {
           currentUser = user;
           authView.classList.add('hidden');
           headerAvatarImg.src = user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`;
           
-          const admin = isAdmin();
-          console.log("Is Admin:", admin, "User Email:", user.email);
-          adminStudioIcon.classList.toggle('hidden', !admin);
-          navStudioBtn.classList.toggle('hidden', !admin);
-          
+          updateAdminVisibility();
           updateLibrary();
           window.switchView('home');
         } else {
           currentUser = null;
           authView.classList.remove('hidden');
-          adminStudioIcon.classList.add('hidden');
-          navStudioBtn.classList.add('hidden');
+          updateAdminVisibility();
         }
       });
 
@@ -919,6 +955,22 @@
           navigator.serviceWorker.register('./sw.js').then(reg => console.log('SW registered')).catch(err => console.log('SW error', err));
         });
       }
+
+      // 11. DETECCIÓN DE CONEXIÓN
+      const offlineView = document.getElementById('offline-view');
+      const updateOnlineStatus = () => {
+        if (navigator.onLine) {
+          offlineView.classList.add('hidden');
+        } else {
+          offlineView.classList.remove('hidden');
+        }
+      };
+
+      window.addEventListener('online', updateOnlineStatus);
+      window.addEventListener('offline', updateOnlineStatus);
+      
+      // Verificar estado inicial
+      updateOnlineStatus();
     </script>
   </body>
 </html>
