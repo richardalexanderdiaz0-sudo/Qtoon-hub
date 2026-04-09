@@ -9,10 +9,8 @@
     <!-- PWA Manifest -->
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#ff4757">
-    <!-- Supabase SDK -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind CSS -->
+    <link rel="stylesheet" href="/src/index.css">
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -255,37 +253,28 @@
 
     <!-- App Logic -->
     <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
       import { 
-        getAuth, 
+        auth, 
+        googleProvider, 
         onAuthStateChanged, 
         signInWithPopup, 
-        GoogleAuthProvider, 
         signInWithEmailAndPassword, 
         createUserWithEmailAndPassword,
         signOut 
-      } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+      } from "./src/lib/firebase.ts";
+      import { client, databases, storage, verifyConnection, ID, Query } from "./src/lib/appwrite.ts";
 
-      // 1. CONFIGURACIÓN DE FIREBASE
-      const firebaseConfig = {
-        apiKey: "AIzaSyCwjeLijCB4-HfFbJjHrpfocJ5mn39pat0",
-        authDomain: "nexusapp-c0a21.firebaseapp.com",
-        databaseURL: "https://nexusapp-c0a21-default-rtdb.europe-west1.firebasedatabase.app",
-        projectId: "nexusapp-c0a21",
-        storageBucket: "nexusapp-c0a21.firebasestorage.app",
-        messagingSenderId: "487113661451",
-        appId: "1:487113661451:web:1774402530bfd189c6fb0e",
-        measurementId: "G-TQ7GDCG5QX"
-      };
+      // 1. CONFIGURACIÓN DE APPWRITE (IDs de Colecciones)
+      // Nota: El cliente y la conexión base están en src/lib/appwrite.ts
+      const APPWRITE_DATABASE_ID = "YOUR_DATABASE_ID"; // Placeholder
+      const APPWRITE_COLLECTION_WORKS = "YOUR_COLLECTION_WORKS_ID"; // Placeholder
+      const APPWRITE_COLLECTION_LIBRARY = "YOUR_COLLECTION_LIBRARY_ID"; // Placeholder
+      const APPWRITE_COLLECTION_CHAPTERS = "YOUR_COLLECTION_CHAPTERS_ID"; // Placeholder
+      const APPWRITE_COLLECTION_PAGES = "YOUR_COLLECTION_PAGES_ID"; // Placeholder
+      const APPWRITE_BUCKET_COVERS = "YOUR_BUCKET_COVERS_ID"; // Placeholder
 
-      // 1.1 CONFIGURACIÓN DE SUPABASE (RELLENA ESTO)
-      const SUPABASE_URL = "https://gacqirbbymaqdicugpac.supabase.co";
-      const SUPABASE_KEY = "sb_publishable_8q3c8yXd5_lpSFh7t5vNSQ_3-chjuGr";
-      const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
-
-      const app = initializeApp(firebaseConfig);
-      const auth = getAuth(app);
-      const googleProvider = new GoogleAuthProvider();
+      // Verificar conexión al iniciar
+      verifyConnection();
 
       const ADMIN_EMAIL = "richardalexanderdiaz0@gmail.com";
 
@@ -382,42 +371,80 @@
       modalOverlay.onclick = closeModal;
 
       const updateLibrary = async () => {
-        if (!currentUser || !supabase) return;
-        const { data } = await supabase.from('user_library').select('*, works(*)').eq('user_id', currentUser.uid);
-        library = data || [];
+        if (!currentUser || !databases) return;
+        try {
+          const response = await databases.listDocuments(
+            APPWRITE_DATABASE_ID,
+            APPWRITE_COLLECTION_LIBRARY,
+            [Query.equal('user_id', currentUser.uid)]
+          );
+          library = response.documents || [];
+        } catch (error) {
+          console.error("Error updating library:", error);
+        }
       };
 
       const addToLibrary = async (workId) => {
-        if (!currentUser || !supabase) return;
-        await supabase.from('user_library').upsert({ user_id: currentUser.uid, work_id: workId });
-        updateLibrary();
+        if (!currentUser || !databases) return;
+        try {
+          // Check if already in library
+          const existing = await databases.listDocuments(
+            APPWRITE_DATABASE_ID,
+            APPWRITE_COLLECTION_LIBRARY,
+            [Query.equal('user_id', currentUser.uid), Query.equal('work_id', workId)]
+          );
+          
+          if (existing.total === 0) {
+            await databases.createDocument(
+              APPWRITE_DATABASE_ID,
+              APPWRITE_COLLECTION_LIBRARY,
+              ID.unique(),
+              { user_id: currentUser.uid, work_id: workId }
+            );
+          }
+          updateLibrary();
+        } catch (error) {
+          console.error("Error adding to library:", error);
+        }
       };
 
       // 5. RENDERIZADO HOME
       const renderHome = async () => {
-        if (!supabase) {
-          mainContent.innerHTML = '<p class="text-center text-slate-400 py-20">Configura Supabase para ver el contenido.</p>';
-          return;
-        }
+        viewTitle.innerText = "NexoToon";
+        viewSubtitle.innerText = "Explora tendencias";
         
         mainContent.innerHTML = '<div class="loader-container flex justify-center py-20"><div class="loader w-10 h-10 border-4 border-[#ff4757] border-t-transparent rounded-full animate-spin"></div></div>';
 
-        const { data: works } = await supabase.from('works').select('*').order('created_at', { ascending: false });
-        
-        if (!works || works.length === 0) {
-          mainContent.innerHTML = '<p class="text-center text-slate-400 py-20">Aún no hay nada por ver...</p>';
+        if (!databases) {
+          mainContent.innerHTML = '<p class="text-center text-slate-400 py-20">Configura Appwrite para ver el contenido.</p>';
           return;
         }
 
-        mainContent.innerHTML = '';
+        try {
+          const response = await databases.listDocuments(
+            APPWRITE_DATABASE_ID,
+            APPWRITE_COLLECTION_WORKS
+          );
+          const works = response.documents;
+          
+          if (!works || works.length === 0) {
+            mainContent.innerHTML = '<p class="text-center text-slate-400 py-20">Aún no hay nada por ver...</p>';
+            return;
+          }
 
-        // Secciones
-        renderSection('AÑADIDOS RECIENTEMENTE', works.slice(0, 5));
-        renderSection('PRÓXIMAMENTE', works.filter(w => new Date(w.release_date) > new Date()));
-        renderSection('ACTUALIZACIONES DIARIAS', works.slice(0, 5));
-        renderSection('TÍTULOS EN TENDENCIA', works.sort((a,b) => b.views_count - a.views_count).slice(0, 5));
-        renderSection('CÓMICS Y MANHWAS', works, true);
-        renderSection('TERMINADOS', works.filter(w => w.status === 'Finalizado'));
+          mainContent.innerHTML = '';
+
+          // Secciones
+          renderSection('AÑADIDOS RECIENTEMENTE', works.slice(0, 5));
+          renderSection('PRÓXIMAMENTE', works.filter(w => new Date(w.release_date) > new Date()));
+          renderSection('ACTUALIZACIONES DIARIAS', works.slice(0, 5));
+          renderSection('TÍTULOS EN TENDENCIA', works.sort((a,b) => (b.views_count || 0) - (a.views_count || 0)).slice(0, 5));
+          renderSection('CÓMICS Y MANHWAS', works, true);
+          renderSection('TERMINADOS', works.filter(w => w.status === 'Finalizado'));
+        } catch (error) {
+          console.error("Error fetching works:", error);
+          mainContent.innerHTML = '<p class="text-center text-slate-400 py-20">Error al cargar contenido. Verifica la configuración de Appwrite.</p>';
+        }
       };
 
       const renderSection = (title, items, isGrid = false) => {
@@ -456,14 +483,26 @@
 
       // 6. DETALLE DE OBRA
       window.openWorkDetail = async (id) => {
-        const { data: work } = await supabase.from('works').select('*').eq('id', id).single();
-        const { data: chapters } = await supabase.from('chapters').select('*').eq('work_id', id).order('chapter_number', { ascending: true });
-        
-        // Incrementar vistas
-        await supabase.from('works').update({ views_count: work.views_count + 1 }).eq('id', id);
-        addToLibrary(id);
+        if (!databases) return;
+        try {
+          const work = await databases.getDocument(APPWRITE_DATABASE_ID, APPWRITE_COLLECTION_WORKS, id);
+          const chaptersResponse = await databases.listDocuments(
+            APPWRITE_DATABASE_ID,
+            APPWRITE_COLLECTION_CHAPTERS,
+            [Query.equal('work_id', id), Query.orderAsc('chapter_number')]
+          );
+          const chapters = chaptersResponse.documents;
+          
+          // Incrementar vistas
+          await databases.updateDocument(
+            APPWRITE_DATABASE_ID,
+            APPWRITE_COLLECTION_WORKS,
+            id,
+            { views_count: (work.views_count || 0) + 1 }
+          );
+          addToLibrary(id);
 
-        modalContent.innerHTML = `
+          modalContent.innerHTML = `
           <div class="space-y-6">
             <!-- Netflix Style Header -->
             <div class="relative h-96 -mx-6 -mt-6 rounded-b-[40px] overflow-hidden shadow-2xl">
@@ -522,6 +561,10 @@
 
         modalOverlay.classList.remove('hidden');
         setTimeout(() => { modalOverlay.classList.add('opacity-100'); detailModal.classList.add('open'); }, 10);
+        } catch (error) {
+          console.error("Error opening work detail:", error);
+          alert("Error al cargar los detalles de la obra.");
+        }
       };
 
       const createChapterRow = (ch) => `
@@ -541,13 +584,24 @@
 
       // 7. LECTOR INMERSIVO
       window.startReading = async (chapterId) => {
+        if (!databases) return;
         closeModal();
         readerUI.classList.remove('hidden');
         readerPages.innerHTML = '<div class="h-screen flex items-center justify-center"><div class="loader w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin"></div></div>';
         
-        const { data: pages } = await supabase.from('pages').select('*').eq('chapter_id', chapterId).order('order_index', { ascending: true });
-        
-        readerPages.innerHTML = pages.map(p => `<img src="${p.image_url}" class="w-full max-w-3xl object-contain" loading="lazy">`).join('');
+        try {
+          const response = await databases.listDocuments(
+            APPWRITE_DATABASE_ID,
+            APPWRITE_COLLECTION_PAGES,
+            [Query.equal('chapter_id', chapterId), Query.orderAsc('order_index')]
+          );
+          const pages = response.documents;
+          
+          readerPages.innerHTML = pages.map(p => `<img src="${p.image_url}" class="w-full max-w-3xl object-contain" loading="lazy">`).join('');
+        } catch (error) {
+          console.error("Error fetching pages:", error);
+          readerPages.innerHTML = '<p class="text-white text-center py-20">Error al cargar las páginas.</p>';
+        }
         
         // Touch events
         let controlsTimeout;
@@ -572,6 +626,8 @@
 
       // 8. ESTUDIO DEL ADMINISTRADOR
       const renderStudio = () => {
+        viewTitle.innerText = "Estudio";
+        viewSubtitle.innerText = "Panel de creador";
         mainContent.innerHTML = `
           <div class="space-y-8">
             <div class="flex items-center justify-between">
@@ -710,17 +766,25 @@
 
         window.handleCoverUpload = async (e) => {
           const file = e.target.files[0];
-          if (!file || !supabase) return;
+          if (!file || !storage) return;
           
           const preview = document.getElementById('cover-preview');
           preview.src = URL.createObjectURL(file);
           
-          // En un entorno real, subiríamos a Supabase Storage aquí
-          // const { data, error } = await supabase.storage.from('covers').upload(`${Date.now()}-${file.name}`, file);
-          // if (data) workData.cover_url = supabase.storage.from('covers').getPublicUrl(data.path).data.publicUrl;
-          
-          // Simulación para demo si no hay credenciales
-          workData.cover_url = preview.src;
+          try {
+            const response = await storage.createFile(
+              APPWRITE_BUCKET_COVERS,
+              ID.unique(),
+              file
+            );
+            // Get public URL
+            const result = storage.getFileView(APPWRITE_BUCKET_COVERS, response.$id);
+            workData.cover_url = result.href;
+          } catch (error) {
+            console.error("Error uploading cover:", error);
+            // Fallback to preview URL for demo if upload fails
+            workData.cover_url = preview.src;
+          }
         };
 
         window.nextStep = () => {
@@ -734,28 +798,35 @@
         };
 
         const publishWork = async () => {
-          if (!supabase) return alert("Configura Supabase primero");
+          if (!databases) return alert("Configura Appwrite primero");
           const btn = document.getElementById('publish-btn');
           btn.disabled = true;
           btn.innerHTML = '<div class="loader w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>';
 
-          const { error } = await supabase.from('works').insert([{
-            title: workData.title,
-            synopsis: workData.synopsis,
-            type: workData.type,
-            status: workData.status,
-            cover_url: workData.cover_url,
-            categories: workData.categories,
-            author_name: currentUser.displayName || 'Admin'
-          }]);
-
-          if (error) {
+          try {
+            await databases.createDocument(
+              APPWRITE_DATABASE_ID,
+              APPWRITE_COLLECTION_WORKS,
+              ID.unique(),
+              {
+                title: workData.title,
+                synopsis: workData.synopsis,
+                type: workData.type,
+                status: workData.status,
+                cover_url: workData.cover_url,
+                categories: workData.categories,
+                author_name: currentUser.displayName || 'Admin',
+                views_count: 0,
+                created_at: new Date().toISOString()
+              }
+            );
+            alert("¡Obra publicada con éxito!");
+            renderStudio();
+          } catch (error) {
+            console.error("Error publishing work:", error);
             alert("Error al publicar: " + error.message);
             btn.disabled = false;
             btn.innerText = "Publicar Obra";
-          } else {
-            alert("¡Obra publicada con éxito!");
-            renderStudio();
           }
         };
         
@@ -770,6 +841,8 @@
       };
 
       const renderSearch = () => {
+        viewTitle.innerText = "Buscar";
+        viewSubtitle.innerText = "Encuentra tu favorito";
         mainContent.innerHTML = `
           <div class="space-y-6">
             <div class="relative">
@@ -785,13 +858,26 @@
         document.getElementById('search-input').oninput = async (e) => {
           const query = e.target.value.toLowerCase();
           if (query.length < 2) return;
-          const { data } = await supabase.from('works').select('*').ilike('title', `%${query}%`);
-          const results = document.getElementById('search-results');
-          results.innerHTML = data && data.length > 0 ? data.map(w => createWorkCard(w, true)).join('') : '<p class="col-span-2 text-center text-slate-400 py-20">No se encontraron resultados.</p>';
+          if (!databases) return;
+          
+          try {
+            const response = await databases.listDocuments(
+              APPWRITE_DATABASE_ID,
+              APPWRITE_COLLECTION_WORKS,
+              [Query.contains('title', query)]
+            );
+            const data = response.documents;
+            const results = document.getElementById('search-results');
+            results.innerHTML = data && data.length > 0 ? data.map(w => createWorkCard(w, true)).join('') : '<p class="col-span-2 text-center text-slate-400 py-20">No se encontraron resultados.</p>';
+          } catch (error) {
+            console.error("Error searching works:", error);
+          }
         };
       };
 
       const renderLibrary = async () => {
+        viewTitle.innerText = "Biblioteca";
+        viewSubtitle.innerText = "Tus lecturas";
         await updateLibrary();
         mainContent.innerHTML = `
           <div class="space-y-6">
@@ -804,6 +890,8 @@
       };
 
       const renderProfile = () => {
+        viewTitle.innerText = "Perfil";
+        viewSubtitle.innerText = "Tu cuenta";
         const userEmail = currentUser.email || (currentUser.providerData && currentUser.providerData[0] ? currentUser.providerData[0].email : "Sin email");
         const isAdminUser = isAdmin();
         
