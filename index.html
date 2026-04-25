@@ -789,20 +789,25 @@
 
         window.handleCoverUpload = async (e) => {
           const file = e.target.files[0];
-          if (!file || !storage) return;
+          if (!file || !supabase) return;
           
           const preview = document.getElementById('cover-preview');
           preview.src = URL.createObjectURL(file);
           
           try {
-            const response = await storage.createFile(
-              APPWRITE_BUCKET_COVERS,
-              ID.unique(),
-              file
-            );
+            const fileName = `privado/${Date.now()}_${file.name}`;
+            const { data, error } = await supabase.storage
+              .from('cubiertas')
+              .upload(fileName, file);
+            
+            if (error) throw error;
+
             // Get public URL
-            const result = storage.getFileView(APPWRITE_BUCKET_COVERS, response.$id);
-            workData.cover_url = result.href;
+            const { data: { publicUrl } } = supabase.storage
+              .from('cubiertas')
+              .getPublicUrl(fileName);
+              
+            workData.cover_url = publicUrl;
           } catch (error) {
             console.error("Error uploading cover:", error);
             // Fallback to preview URL for demo if upload fails
